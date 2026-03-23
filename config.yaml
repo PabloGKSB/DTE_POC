@@ -1,0 +1,91 @@
+# =========================================================
+# CONFIGURACIÓN GENERAL DEL PRECHECK DTE
+# =========================================================
+# Este archivo controla:
+#  - Carpetas de entrada/salida
+#  - Comportamiento del watcher (estabilidad, cache)
+#  - Reglas de validación habilitadas
+#  - Parámetros usados por las reglas
+#
+# No es necesario modificar el código Python para:
+#  - activar/desactivar reglas
+#  - ajustar criterios de validación
+# =========================================================
+
+
+# -------------------------
+# Rutas de trabajo
+# -------------------------
+paths:
+  # Carpeta donde el sistema observa la llegada de XML
+  # (en producción será la carpeta donde QaD deja los archivos)
+  in_dir:  "C:/Users/gomepab/Desktop/DTE_xml/InFUD"
+
+  # Carpeta destino para XML que pasan todas las validaciones
+  ok_dir:  "C:/Users/gomepab/Desktop/DTE_xml/InFUD_pilo"
+
+  # Carpeta destino para XML con errores detectados
+  # Aquí también se generan los reportes *.readable.txt
+  err_dir: "C:/Users/gomepab/Desktop/DTE_xml/Error"
+
+
+# -------------------------
+# Parámetros del watcher
+# -------------------------
+watch:
+  # Tiempo (en segundos) entre chequeos de tamaño del archivo
+  # Se usa para asegurar que el XML terminó de escribirse
+  poll_stable_seconds: 0.6
+
+  # Número de chequeos consecutivos con el mismo tamaño
+  # necesarios para considerar el archivo "estable"
+  stable_checks: 2
+
+  # Tiempo (en segundos) que un archivo queda en cache
+  # para evitar reprocesarlo por múltiples eventos del filesystem
+  processed_cache_seconds: 30
+
+
+# -------------------------
+# Motor de reglas
+# -------------------------
+rules:
+  # Lista de reglas habilitadas.
+  # El orden importa: se ejecutan en el orden definido aquí.
+  #
+  # Cada nombre corresponde a un módulo en la carpeta rules/
+  enabled:
+    - rule_schema_basico     # Validaciones de consistencia básica (Chofer, Referencia)
+    - rule_schema_cdgitem    # CdgItem exige VlrCodigo
+    - rule_cantidad          # Cantidad numérica y mayor a mínimo
+    - rule_moneda            # Moneda válida (formato + lista permitida)
+    - rule_rut
+    - rule_sanitize_ampersand               # Validación de RUT chileno
+    - rule_caf_stock         # Vigila si quedan folios autorizados en Z:\
+
+
+# -------------------------
+# Parámetros para reglas
+# -------------------------
+params:
+
+  # Parámetros usados por rule_moneda
+  moneda:
+    # Lista de monedas permitidas.
+    # Si se deja vacía o se elimina, solo se valida formato (3 letras).
+    allowed: ["CLP", "USD", "EUR"]   # puedes ampliar
+
+  # Parámetros usados por rule_cantidad
+  cantidad:
+    # Valor mínimo permitido para campos de cantidad
+    min: 0.0
+
+  sanitize_ampersand:
+    enabled: true
+    mode: "and_es"     # "escape" (recomendado) o "and_es"
+    inplace: false 
+
+  # Parámetros usados por rule_caf_stock
+  caf:
+    dir: "Z:/"         # Carpeta compartida donde se suben los .xml de CAF del SII
+    alerta_stock: 50   # Muestra WARN cuando queden 50 folios o menos
