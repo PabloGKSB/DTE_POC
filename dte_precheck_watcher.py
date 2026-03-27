@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import List, Optional
 from dataclasses import asdict
 
-from watchdog.observers import Observer
+from watchdog.observers.polling import PollingObserver as Observer
 from watchdog.events import FileSystemEventHandler
 from autofix import apply_autofix, FixChange
 from rules.rule_sanitize_ampersand import run_preparse as sanitize_preparse
