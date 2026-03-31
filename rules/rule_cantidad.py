@@ -59,19 +59,14 @@ def run(tree: etree._ElementTree, xml_path: Path, ctx: dict) -> List[ValidationI
 
     # Posibles nombres de tags que representan cantidad
     # (por variaciones de schema o versiones)
-    candidate_tags = ("Cantidad", "QtyItem", "Qty")
+    candidate_tags = ("Cantidad", "QtyItem", "Qty", "QTYItem", "QTYitems")
 
     # Recorre cada variante de tag posible
     for tag in candidate_tags:
         for val, _node in _find_texts(tree, tag):
 
-            # Caso 1: campo vacío
+            # Caso 1: campo vacío. Lo ignoramos (no es error)
             if val is None or val.strip() == "":
-                issues.append(ValidationIssue(
-                    code="LECTURA_INPUT_XML",
-                    field="Cantidad",
-                    message=f"El campo <{tag}> está vacío y debe ser numérico."
-                ))
                 continue
 
             # Normalización simple:

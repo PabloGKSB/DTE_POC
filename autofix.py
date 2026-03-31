@@ -129,7 +129,7 @@ def _normalize_number_text(s: str) -> Optional[str]:
 
 def _fix_cantidad(tree: etree._ElementTree, ctx: dict) -> List[FixChange]:
     changes: List[FixChange] = []
-    for tag in ("Cantidad", "QtyItem", "Qty"):
+    for tag in ("Cantidad", "QtyItem", "Qty", "QTYItem", "QTYitems"):
         for node in _iter_nodes_by_local(tree, tag):
             old = (node.text or "").strip()
             if not old:
