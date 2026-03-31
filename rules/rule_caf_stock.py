@@ -29,7 +29,7 @@ def parse_caf_range(caf_path: Path) -> Optional[tuple[int, int]]:
 
 def find_valid_caf(caf_dir: Path, tipo_dte: str, current_folio: int) -> Optional[tuple[Path, int]]:
     """
-    Busca en el directorio de CAFs (Z:\) un archivo que contenga
+    Busca en el directorio de CAFs configurado un archivo que contenga
     autorización para el tipo_dte y cuyo rango incluya current_folio.
     Retorna (ruta_al_caf, folios_restantes) o None.
     """
@@ -63,7 +63,7 @@ def find_valid_caf(caf_dir: Path, tipo_dte: str, current_folio: int) -> Optional
 # =========================================
 def run(tree: etree._ElementTree, xml_path: Path, ctx: dict) -> List[ValidationIssue]:
     """
-    Valida que el DTE tenga un Folio autorizado por un CAF existente en Z:\
+    Valida que el DTE tenga un Folio autorizado por un CAF existente en el directorio configurado
     y genera alertas preventivas si quedan pocos folios disponibles.
     
     Parámetros (en config.yaml):
@@ -127,7 +127,7 @@ def run(tree: etree._ElementTree, xml_path: Path, ctx: dict) -> List[ValidationI
         issues.append(ValidationIssue(
             code="GENERA_XML",
             field="Folio",
-            message=f"No se encuentra archivo CAF cargado para tipo documento {tipo_dte}, Folio {folio}. Descargue y coloque el CAF oficial en Z:\.",
+            message=f"No se encuentra archivo CAF cargado para tipo documento {tipo_dte}, Folio {folio}. Descargue y coloque el CAF oficial en la carpeta: {caf_dir}.",
             severity="ERROR"
         ))
     else:
