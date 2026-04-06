@@ -314,6 +314,30 @@ def write_fix_report(base_path: Path, changes: List[FixChange], dest_dir: Path):
     lines.append("")
     rep.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
+def send_fatal_email(xml_name: str, issues: list, is_fixed=False):
+    email_cfg = PARAMS.get("alertas_email", {})
+    if not (email_cfg and email_cfg.get("origen")):
+        return
+        
+    from rules.email_utils import enviar_alerta_caf
+    
+    estado = "después de intentar correcciones automáticas" if is_fixed else "sin poder aplicar correcciones automáticas"
+    asunto = f"ALERTA DTE: Rechazo en {xml_name}"
+    
+    lines = [
+        f"El archivo {xml_name} generó alertas o fue rechazado ({estado}).",
+        f"Se encontraron {len(issues)} advertencia(s)/error(es):",
+        ""
+    ]
+    for i, it in enumerate(issues, 1):
+        code = it.get("code", "NA")
+        field = it.get("field", "NA")
+        msg = it.get("message", "")
+        lines.append(f"{i}. [{code}] CAMPO: {field} | {msg}")
+
+    cuerpo = "\n".join(lines)
+    enviar_alerta_caf(asunto, cuerpo, email_cfg)
+
 
 
 # =============================
@@ -391,6 +415,7 @@ class Processor:
             if not tree:
                 # Si ni siquiera parsea, no hay nada que arreglar
                 log.error("[ERROR] %s -> %s (XML mal formado, sin autofix)", moved_original.name, ERR_DIR)
+                send_fatal_email(moved_original.name, issues)
                 return
 
             ctx = {"params": PARAMS}
@@ -399,6 +424,7 @@ class Processor:
             if not changes:
                 # No había correcciones seguras aplicables
                 log.warning("[ERROR] %s -> %s (sin correcciones aplicables)", moved_original.name, ERR_DIR)
+                send_fatal_email(moved_original.name, issues)
                 return
 
             # 4) Guardar XML corregido con sufijo .fixed.xml en ERR_DIR (auditable)
@@ -419,6 +445,7 @@ class Processor:
                 # Si sigue fallando, dejarlo en ERR y reportar sus issues
                 write_report(fixed_path, fixed_issues, ERR_DIR)
                 log.warning("[ERROR] %s -> %s (autofix aplicado pero sigue fallando)", moved_original.name, ERR_DIR)
+                send_fatal_email(moved_original.name, fixed_issues, is_fixed=True)
 
 class Handler(FileSystemEventHandler):
     """

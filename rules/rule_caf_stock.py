@@ -3,7 +3,6 @@ from pathlib import Path
 from lxml import etree
 
 from .models import ValidationIssue
-from .email_utils import enviar_alerta_caf
 
 def parse_caf_range(caf_path: Path) -> Optional[tuple[int, int]]:
     """
@@ -77,7 +76,6 @@ def run(tree: etree._ElementTree, xml_path: Path, ctx: dict) -> List[ValidationI
 
     # Leemos configuración
     caf_cfg = ctx.get("params", {}).get("caf", {})
-    email_cfg = ctx.get("params", {}).get("alertas_email", {})
     caf_dir_str = caf_cfg.get("dir")
     alerta_porcentaje = float(caf_cfg.get("alerta_porcentaje", 10.0)) / 100.0
     
@@ -86,15 +84,12 @@ def run(tree: etree._ElementTree, xml_path: Path, ctx: dict) -> List[ValidationI
         
     caf_dir = Path(caf_dir_str)
     if not caf_dir.exists():
-        mensaje_error_cfg = f"La carpeta de CAFs configurada no existe: {caf_dir}"
         issues.append(ValidationIssue(
             code="CAF_CONFIG_ERROR",
             field="Sistema",
-            message=mensaje_error_cfg,
+            message=f"La carpeta de CAFs configurada no existe: {caf_dir}",
             severity="WARN"
         ))
-        # Envío de correo
-        enviar_alerta_caf("ALERTA: Carpeta CAF No Encontrada", mensaje_error_cfg, email_cfg)
         return issues
 
     # Buscamos el TipoDTE y el Folio en el XML entrante
@@ -128,41 +123,32 @@ def run(tree: etree._ElementTree, xml_path: Path, ctx: dict) -> List[ValidationI
     resultado = find_valid_caf(caf_dir, tipo_dte, folio)
     
     if not resultado:
-        mensaje_error_caf = f"No se encuentra archivo CAF cargado para tipo documento {tipo_dte}, Folio {folio}. Descargue y coloque el CAF oficial en la carpeta: {caf_dir}."
         # Error grave: Están usando un folio que NO está en ninguno de los CAFs de Z:\
         issues.append(ValidationIssue(
             code="GENERA_XML",
             field="Folio",
-            message=mensaje_error_caf,
+            message=f"No se encuentra archivo CAF cargado para tipo documento {tipo_dte}, Folio {folio}. Descargue y coloque el CAF oficial en la carpeta: {caf_dir}.",
             severity="ERROR"
         ))
-        # Envío de correo
-        enviar_alerta_caf(f"ALERTA URGENTE: CAF No Encontrado (Tipo {tipo_dte})", mensaje_error_caf, email_cfg)
     else:
         # ¡CAF encontrado! Validamos stock restante
         caf_path, restantes, total_caf = resultado
         
         if restantes == 0:
-            mensaje_alerta = f"¡Atención! Este es el ÚLTIMO folio ({folio}) del CAF {caf_path.name}. Urgente solicitar nuevos folios al SII."
             issues.append(ValidationIssue(
                 code="ALERTA_CAF_AGOTADO",
                 field="Folio",
-                message=mensaje_alerta,
+                message=f"¡Atención! Este es el ÚLTIMO folio ({folio}) del CAF {caf_path.name}. Urgente solicitar nuevos folios al SII.",
                 severity="WARN"
             ))
-            # Envío de correo
-            enviar_alerta_caf("ALERTA URGENTE: CAF Agotado", mensaje_alerta, email_cfg)
         else:
             porcentaje_restante = (restantes / total_caf)
             if porcentaje_restante <= alerta_porcentaje:
-                mensaje_alerta = f"Stock bajo para tipo documento {tipo_dte}: Quedan solo {restantes} folios ({porcentaje_restante:.1%} del total) en {caf_path.name}."
                 issues.append(ValidationIssue(
                     code="ALERTA_CAF_STOCK_BAJO",
                     field="Folio",
-                    message=mensaje_alerta,
+                    message=f"Stock bajo para tipo documento {tipo_dte}: Quedan solo {restantes} folios ({porcentaje_restante:.1%} del total) en {caf_path.name}.",
                     severity="WARN"
                 ))
-                # Envío de correo
-                enviar_alerta_caf(f"Aviso: Stock bajo de CAF para {tipo_dte}", mensaje_alerta, email_cfg)
 
     return issues
